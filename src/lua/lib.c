@@ -10,7 +10,7 @@
 
 static int unix_sockets_close(lua_State *L)
 {
-    int sock = lua_tointeger(L, 1);
+    int sock = lua_getfield(L, 1, "fd");
     socket_close(sock);
 
     return 0;
@@ -18,7 +18,20 @@ static int unix_sockets_close(lua_State *L)
 
 static int unix_sockets_read(lua_State *L)
 {
-    return 0;
+    char buff[MAX_BUFFER_LEN];
+    int sock = lua_getfield(L, 1, "fd");
+    int res;
+
+    res = socket_read(sock, buff, MAX_BUFFER_LEN);
+    if (res <= 0) {
+        lua_pushnil(L);
+        return 1;
+    }
+
+    buff[res-1] = '\0';
+    lua_pushstring(L, buff);
+
+    return 1;
 }
 
 static int unix_sockets_write(lua_State *L)
