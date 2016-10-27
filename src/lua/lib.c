@@ -65,7 +65,8 @@ static int unix_sockets_open(lua_State *L)
         return 1;
     }
 
-    luaL_newlib(L, socket_methods);
+    lua_newtable(L);
+    luaL_setfuncs(L, socket_methods, 0);
     lua_pushinteger(L, sock);
     lua_setfield(L, 2, "fd");
 
