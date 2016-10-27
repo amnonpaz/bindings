@@ -77,7 +77,7 @@ static const luaL_Reg unix_sockets_lib[] = {
     {NULL, NULL}
 };
 
-int luaopen_unix_sockets(lua_State *L)
+int luaopen_libunixsockets(lua_State *L)
 {
     luaL_newlib(L, unix_sockets_lib);
 

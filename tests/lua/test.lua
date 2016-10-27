@@ -1,4 +1,4 @@
-local sockets = require('unix_sockets')
+local sockets = require('libunixsockets')
 
 local words_list = {
     'Test string #1',

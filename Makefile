@@ -1,46 +1,53 @@
-.PHONY: all clean download install uninstall
-
 UNIX_SOCKETS_GIT_URL = https://github.com/amnonpaz/unix_sockets.git
 
-CC := gcc
-CFLAGS := -g -Wall -fPIC
-RM := rm -f
-LD := ld
-LDFLAGS := -fPIC -share
+CC = gcc
+CFLAGS = -g -Wall -fPIC
+RM = rm -f
+LD = ld
+LDFLAGS = -fPIC -share
 
-CLIENT_INC := -Idownloads/unix_sockets/src/include/
-CLIENT_LIB := downloads/unix_sockets/libclient.a
+CLIENT_INC = -Idownloads/unix_sockets/src/include/
+CLIENT_LIB = downloads/unix_sockets/libclient.a
 
-TARGET_DIR := targets
+TARGET_DIR = targets
+LIBNAME = libunixsockets.so
 
-V ?= $(shell lua -v | awk '{ split($$2, t, ".") ; if (t[1] >= 5) { v = t[1] "." t[2] } ; print v }')
-LUAV := lua$(V)
+## Lua definitions
+LUAV ?= $(shell lua -v | awk '{ split($$2, t, ".") ; if (t[1] >= 5) { v = t[1] "." t[2] } ; print v }')
 
-LUA_LIBS := $(shell pkg-config --libs-only-l $(LUAV))
-LUA_CFLAGS := $(shell pkg-config --cflags $(LUAV))
-LUA_DEST_DIR ?= /usr/local/lib/lua/$(V)/
+LIBLUA = liblua
+LIBLUA_OBJS = src/lua/lib.o
+LIBLUA_LIBS = $(shell pkg-config --libs-only-l lua$(LUAV))
+LIBLUA_CFLAGS = $(shell pkg-config --cflags lua$(LUAV))
+LIBLUA_TARGET_SUBDIR = lua
+LIBLUA_TARGET = $(TARGET_DIR)/$(LIBLUA_TARGET_SUBDIR)/$(LIBNAME)
+LIBLUA_DEST_DIR ?= /usr/local/lib/lua/$(LUAV)/
 
-CFLAGS += $(LUA_CFLAGS)
-
-## User targets
-LIBLUA := liblua
-LIBLUA_TARGET_DIR := $(TARGET_DIR)/lua
-
-## Actual targets
-LIBLUA_TARGET := unix_sockets.so
-LIBLUA_OBJS := src/lua/lib.o
+## Java definitions
+LIBJAVA = libjava
+LIBJAVA_OBJS = src/java/unix_sockets_jni.o
+LIBJAVA_CFLAGS = -I$(JAVA_HOME)/include -I$(JAVA_HOME)/include/linux
+LIBJAVA_TARGET_SUBDIR = java
+LIBJAVA_TARGET = $(TARGET_DIR)/$(LIBJAVA_TARGET_SUBDIR)/$(LIBNAME)
+LIBJAVA_DEST_DIR ?= /usr/lib/jni/
 
 ## All targets
-all: clean $(LIBLUA_TARGET)
+all: clean $(LIBLUA) $(LIBJAVA)
 
-## User targets to actual targets
-$(LIBLUA): $(LIBLUA_TARGET)
+## Adding CFLAGS according to target
+$(LIBLUA): CFLAGS += $(LIBLUA_CFLAGS)
+$(LIBJAVA): CFLAGS += $(LIBJAVA_CFLAGS)
 
 ## Recipes
-$(LIBLUA_TARGET): download $(LIBLUA_OBJS)
-	@echo "Linking $@"
-	@mkdir -p $(LIBLUA_TARGET_DIR)
-	@$(LD) $(LDFLAGS) $(LUA_LIBS) -o $(LIBLUA_TARGET_DIR)/$@ $(LIBLUA_OBJS) $(CLIENT_LIB)
+$(LIBLUA): download $(LIBLUA_OBJS)
+	@echo "Linking $@..."
+	@mkdir -p $(TARGET_DIR)/$(LIBLUA_TARGET_SUBDIR)
+	@$(LD) $(LDFLAGS) $(LIBLUA_LIBS) -o $(LIBLUA_TARGET) $(LIBLUA_OBJS) $(CLIENT_LIB)
+
+$(LIBJAVA): download $(LIBJAVA_OBJS)
+	@echo "Linking $@..."
+	@mkdir -p $(TARGET_DIR)/$(LIBJAVA_TARGET_SUBDIR)
+	@$(LD) $(LDFLAGS) -o $(LIBJAVA_TARGET) $(LIBJAVA_OBJS) $(CLIENT_LIB)
 
 %.o: %.c
 	@echo "Compiling $<"
@@ -53,16 +60,23 @@ download:
 	@make -C downloads/unix_sockets clientlib
 
 install:
-	@echo "Installing $(LIBLUA_TARGET) in $(LUA_DEST_DIR)"
-	@mkdir -p $(LUA_DEST_DIR)
-	@install -m 655 $(LIBLUA_TARGET_DIR)/$(LIBLUA_TARGET) $(LUA_DEST_DIR)/$(LIBLUA_TARGET)
+	@echo "Installing $(LIBLUA_TARGET) in $(LIBLUA_DEST_DIR)..."
+	@mkdir -p $(LIBLUA_DEST_DIR)
+	@install -m 655 $(LIBLUA_TARGET) $(LIBLUA_DEST_DIR)/$(LIBNAME)
+	@echo "Installing $(LIBJAVA_TARGET) in $(LIBJAVA_DEST_DIR)..."
+	@mkdir -p $(LIBJAVA_DEST_DIR)
+	@install -m 655 $(LIBJAVA_TARGET) $(LIBJAVA_DEST_DIR)/$(LIBNAME)
 
 uninstall:
-	@echo "Deleting $(LUA_DEST_DIR)/$(LIBLUA_TARGET)"
-	@rm -f $(LUA_DEST_DIR)/$(LIBLUA_TARGET)
+	@echo "Deleting $(LIBLUA_DEST_DIR)/$(LIBLUA_TARGET)"
+	@rm -f $(LIBLUA_DEST_DIR)/$(LIBNAME)
+	@echo "Deleting $(LIBJAVA_DEST_DIR)/$(LIBJAVA_TARGET)"
+	@rm -f $(LIBLUA_JAVA_DIR)/$(LIBNAME)
 
 clean:
 	@echo "Cleaning unix_sockets..."
 	@[ -e downloads/unix_sockets ] && make -C downloads/unix_sockets clean
 	@echo "Cleaning projects..."
-	@$(RM) $(TARGETS) $(LIBLUA_OBJS)
+	@$(RM) $(LIBLUA_TARGET) $(LIBLUA_OBJS) $(LIBJAVA_TARGET) $(LIBJAVA_OBJS)
+
+.PHONY: all clean download install uninstall $(LIBLUA) $(LIBJAVA)

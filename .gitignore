@@ -32,5 +32,8 @@
 *.dSYM/
 *.su
 
+# Java builds
+*.class
+
 # Build targets
 downloads
