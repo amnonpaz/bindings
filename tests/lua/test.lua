@@ -3,7 +3,7 @@ local sockets = require('libunixsockets')
 local words_list = {
     'Test string #1',
     'Another try',
-    'TERM'
+    'This is the last message in this test!'
 }
 
 local function send_list(sock, l)
