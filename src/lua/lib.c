@@ -28,7 +28,7 @@ static int unix_sockets_read(lua_State *L)
         return 1;
     }
 
-    buff[res-1] = '\0';
+    buff[res] = '\0';
     lua_pushstring(L, buff);
 
     return 1;
