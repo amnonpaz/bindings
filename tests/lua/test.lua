@@ -15,7 +15,7 @@ local function send_list(sock, l)
         end
 
         local resp = sock:read()
-        print('* Sent "' .. v .. '", listener reponse: "' .. tostring(resp) .. '"')
+        print('* Sent "' .. v .. '", listener response: "' .. tostring(resp) .. '"')
     end
 end
 
