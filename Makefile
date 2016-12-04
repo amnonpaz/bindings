@@ -1,13 +1,11 @@
-UNIX_SOCKETS_GIT_URL = https://github.com/amnonpaz/unix_sockets.git
-
 CC = gcc
 CFLAGS = -g -Wall -fPIC
 RM = rm -f
 LD = ld
 LDFLAGS = -fPIC -share
 
-CLIENT_INC = -Idownloads/unix_sockets/src/include/
-CLIENT_LIB = downloads/unix_sockets/libclient.a
+CLIENT_INC = -Iunix_sockets/src/include/
+CLIENT_LIB = unix_sockets/libclient.a
 
 TARGET_DIR = targets
 LIBNAME = libunixsockets.so
@@ -39,12 +37,12 @@ $(LIBLUA): CFLAGS += $(LIBLUA_CFLAGS)
 $(LIBJAVA): CFLAGS += $(LIBJAVA_CFLAGS)
 
 ## Recipes
-$(LIBLUA): download $(LIBLUA_OBJS)
+$(LIBLUA): client_lib $(LIBLUA_OBJS)
 	@echo "Linking $@..."
 	@mkdir -p $(TARGET_DIR)/$(LIBLUA_TARGET_SUBDIR)
 	@$(LD) $(LDFLAGS) $(LIBLUA_LIBS) -o $(LIBLUA_TARGET) $(LIBLUA_OBJS) $(CLIENT_LIB)
 
-$(LIBJAVA): download $(LIBJAVA_OBJS)
+$(LIBJAVA): client_lib $(LIBJAVA_OBJS)
 	@echo "Linking $@..."
 	@mkdir -p $(TARGET_DIR)/$(LIBJAVA_TARGET_SUBDIR)
 	@$(LD) $(LDFLAGS) -o $(LIBJAVA_TARGET) $(LIBJAVA_OBJS) $(CLIENT_LIB)
@@ -53,11 +51,9 @@ $(LIBJAVA): download $(LIBJAVA_OBJS)
 	@echo "Compiling $<"
 	@$(CC) $(CFLAGS) $(CLIENT_INC) -c $< -o $@
 
-download:
-	@echo "Retreiving unix_sockets..."
-	@mkdir -p downloads
-	@[ -e downloads/unix_sockets ] && git -C downloads/unix_sockets pull || git -C downloads clone $(UNIX_SOCKETS_GIT_URL)
-	@make -C downloads/unix_sockets clientlib
+client_lib:
+	@echo "Building unix sockets client library..."
+	@make -C unix_sockets clientlib
 
 install:
 	@echo "Installing $(LIBLUA_TARGET) in $(LIBLUA_DEST_DIR)..."
@@ -75,8 +71,8 @@ uninstall:
 
 clean:
 	@echo "Cleaning unix_sockets..."
-	@[ -e downloads/unix_sockets ] && make -C downloads/unix_sockets clean
+	@make -C unix_sockets clean
 	@echo "Cleaning projects..."
 	@$(RM) $(LIBLUA_TARGET) $(LIBLUA_OBJS) $(LIBJAVA_TARGET) $(LIBJAVA_OBJS)
 
-.PHONY: all clean download install uninstall $(LIBLUA) $(LIBJAVA)
+.PHONY: all clean client_lib install uninstall $(LIBLUA) $(LIBJAVA)
