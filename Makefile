@@ -7,7 +7,7 @@ LDFLAGS = -fPIC -share
 CLIENT_INC = -Iunix_sockets/src/include/
 CLIENT_LIB = unix_sockets/libclient.a
 
-TARGET_DIR = targets
+TARGET_DIR = build
 LIBNAME = libunixsockets.so
 
 ## Lua definitions
