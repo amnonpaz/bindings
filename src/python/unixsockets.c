@@ -3,64 +3,86 @@
 
 #define MAX_BUFFER_LEN 4096
 
-static PyObject *unixsockets_open(PyObject *self, PyObject *args)
+typedef struct {
+    PyObject_HEAD
+    int fd;
+} socket;
+
+static void socketClear(socket *self)
+{
+    if (self->fd <= 0)
+        return;
+
+    socket_close(self->fd);
+    self->fd = 0;
+}
+
+static void socketDealloc(socket* self)
+{
+    socketClear(self);
+    self->ob_type->tp_free((PyObject*)self);
+}
+
+static PyObject *socketNew(PyTypeObject *type, PyObject *args, PyObject *kwds)
+{
+    socket *self;
+
+    self = (socket *)type->tp_alloc(type, 0);
+    if (self == NULL)
+        return NULL;
+
+    self->fd = 0;
+
+    return (PyObject *)self;
+}
+
+static int socketInit(socket *self, PyObject *args, PyObject *kwds)
 {
     const char *socket_name;
-    int fd;
 
-    if (!PyArg_ParseTuple(args, "s", &socket_name))
-        return NULL;
-
-    fd = socket_open(socket_name);
-    if (fd <= 0) {
-        PyErr_SetFromErrno(PyExc_Exception);
-        return NULL;
+    if (self->fd != 0) {
+        PyErr_SetString(PyExc_BaseException,
+                        "Cannot initialize an open socket");
+        return -1;
     }
 
-    return Py_BuildValue("i", fd);
+    if (!PyArg_ParseTuple(args, "s", &socket_name))
+        return -1;
+
+    self->fd = socket_open(socket_name);
+    if (self->fd <= 0) {
+        PyErr_SetFromErrno(PyExc_IOError);
+        return -1;
+    }
+
+    return 0;
 }
 
-
-static PyObject *unixsockets_close(PyObject *self, PyObject *args)
-{
-    int fd;
-
-    if (!PyArg_ParseTuple(args, "i", &fd))
-        return NULL;
-
-    socket_close(fd);
-
-    return Py_BuildValue("i", 0);
-}
-
-static PyObject *unixsockets_write(PyObject *self, PyObject *args)
+static PyObject *socketWrite(socket *self, PyObject *args)
 {
     const char *str;
-    int fd, res, len;
+    int res, len;
 
-    if (!PyArg_ParseTuple(args, "is#", &fd, &str, &len))
+    if (!PyArg_ParseTuple(args, "s#", &str, &len))
         return NULL;
 
-    res = socket_write(fd, str, len);
+    res = socket_write(self->fd, str, len);
     if (res <= 0) {
-        PyErr_SetFromErrno(PyExc_Exception);
+        PyErr_SetFromErrno(PyExc_IOError);
         return NULL;
     }
 
     return Py_BuildValue("i", res);
 }
 
-static PyObject *unixsockets_read(PyObject *self, PyObject *args)
+static PyObject *socketRead(socket *self, PyObject *args)
 {
     char str[MAX_BUFFER_LEN];
-    int fd, res;
+    int res;
 
-    if (!PyArg_ParseTuple(args, "i", &fd))
-        return NULL;
-
-    res = socket_read(fd, str, MAX_BUFFER_LEN);
+    res = socket_read(self->fd, str, MAX_BUFFER_LEN);
     if (res <= 0) {
-        PyErr_SetFromErrno(PyExc_Exception);
+        PyErr_SetFromErrno(PyExc_IOError);
         return NULL;
     }
     str[res] = '\0';
@@ -69,14 +91,69 @@ static PyObject *unixsockets_read(PyObject *self, PyObject *args)
 }
 
 static PyMethodDef unixSocketsMethods[] = {
-    {"open", unixsockets_open, METH_VARARGS, "Open a Unix domain socket"},
-    {"close", unixsockets_close, METH_VARARGS, "Close a Unix domain socket"},
-    {"write", unixsockets_write, METH_VARARGS, "Write to a Unix domain socket"},
-    {"read", unixsockets_read, METH_VARARGS, "Write to a Unix domain socket"},
-    {NULL, NULL, 0, NULL}
+    { "write", (PyCFunction)socketWrite, METH_VARARGS, "Write to a Unix domain socket" },
+    { "read", (PyCFunction)socketRead, METH_NOARGS, "Read from a Unix domain socket" },
+    { NULL, NULL, 0, NULL }
+};
+
+static PyTypeObject socketType = {
+    PyObject_HEAD_INIT(NULL)
+    0,                         /*ob_size*/
+    "UnixSockets.Socket",      /*tp_name*/
+    sizeof(socket),            /*tp_basicsize*/
+    0,                         /*tp_itemsize*/
+    (destructor)socketDealloc, /*tp_dealloc*/
+    0,                         /*tp_print*/
+    0,                         /*tp_getattr*/
+    0,                         /*tp_setattr*/
+    0,                         /*tp_compare*/
+    0,                         /*tp_repr*/
+    0,                         /*tp_as_number*/
+    0,                         /*tp_as_sequence*/
+    0,                         /*tp_as_mapping*/
+    0,                         /*tp_hash */
+    0,                         /*tp_call*/
+    0,                         /*tp_str*/
+    0,                         /*tp_getattro*/
+    0,                         /*tp_setattro*/
+    0,                         /*tp_as_buffer*/
+    Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE, /*tp_flags*/
+    "Unix socket",             /* tp_doc */
+    0,                         /* tp_traverse */
+    (inquiry)socketClear,      /* tp_clear */
+    0,                         /* tp_richcompare */
+    0,                         /* tp_weaklistoffset */
+    0,                         /* tp_iter */
+    0,                         /* tp_iternext */
+    unixSocketsMethods,        /* tp_methods */
+    0,                         /* tp_members */
+    0,                         /* tp_getset */
+    0,                         /* tp_base */
+    0,                         /* tp_dict */
+    0,                         /* tp_descr_get */
+    0,                         /* tp_descr_set */
+    0,                         /* tp_dictoffset */
+    (initproc)socketInit,      /* tp_init */
+    0,                         /* tp_alloc */
+    socketNew,                 /* tp_new */
+};
+
+static PyMethodDef unixSocketsModuleMethods[] = {
+    { NULL }
 };
 
 PyMODINIT_FUNC initUnixSockets(void)
 {
-    (void)Py_InitModule("UnixSockets", unixSocketsMethods);
+    PyObject* m;
+
+    if (PyType_Ready(&socketType) < 0)
+        return;
+
+    m = Py_InitModule3("UnixSockets", unixSocketsModuleMethods,
+                       "Unix socket modules");
+    if (m == NULL)
+        return;
+
+    Py_INCREF(&socketType);
+    PyModule_AddObject(m, "Socket", (PyObject *)&socketType);
 }

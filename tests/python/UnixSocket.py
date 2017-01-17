@@ -1,31 +1,28 @@
-import UnixSockets
+import sys, UnixSockets
+
+if len(sys.argv) != 2:
+    print('Usage: python {0} <socket>'.format(sys.argv[0]))
+    quit()
+
+socketName = sys.argv[1]
+
+try:
+    mySocket = UnixSockets.Socket(socketName)
+except Exception as e:
+    print('Error opening socket {0}: "{1}"'.format(socketName, e))
+    quit()
 
 
-
-class unixSocket:
-    def __init__(self, socketName):
-        try:
-            self.fd = UnixSockets.open(socketName)
-        except Exception as e:
-            print('Error opening file: {0}'.format(list(e)[1]))
-
-    def close(self):
-        UnixSockets.close(self.fd)
-
-    def write(self, s):
-        return UnixSockets.write(self.fd, s)
-
-    def read(self):
-        return UnixSockets.read(self.fd)
-
-words = [ 'First', 'Second', 'Onther one', 'bytes the dust' ]
-
-mySocket = unixSocket('/tmp/mysock')
+words = [ 'Hi there', 'Just testing you from python', 'Third message', 'Another message, just before leaving', 'So long']
 
 for word in words:
-    write_res = mySocket.write(word)
-    print('* Sent "{0}", {1} bytes sent ack'.format(word, write_res))
-    resp = mySocket.read()
-    print('  Listener response: {0}'.format(resp))
+    try:
+        writeRes = mySocket.write(word)
+        print('* Sent "{0}", {1} bytes sent'.format(word, writeRes))
+        resp = mySocket.read()
+        print('  Listener response: {0}'.format(resp))
+    except IOError as e:
+        print('Error communicating with listener: "{0}"'.format(e))
+        break
 
-mySocket.close()
+
