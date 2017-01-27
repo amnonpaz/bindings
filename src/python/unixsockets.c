@@ -68,7 +68,7 @@ static PyObject *socketWrite(socket *self, PyObject *args)
     return Py_BuildValue("i", res);
 }
 
-static PyObject *socketRead(socket *self, PyObject *args)
+static PyObject *socketRead(socket *self)
 {
     char str[MAX_BUFFER_LEN];
     int res;
