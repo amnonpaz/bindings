@@ -14,7 +14,6 @@ static void socketDealloc(socket* self)
         return;
 
     socket_close(self->fd);
-    self->fd = 0;
 
     self->ob_type->tp_free((PyObject*)self);
 }
