@@ -10,10 +10,8 @@ typedef struct {
 
 static void socketDealloc(socket* self)
 {
-    if (self->fd <= 0)
-        return;
-
-    socket_close(self->fd);
+    if (self->fd > 0)
+        socket_close(self->fd);
 
     self->ob_type->tp_free((PyObject*)self);
 }
