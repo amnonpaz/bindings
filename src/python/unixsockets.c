@@ -8,18 +8,14 @@ typedef struct {
     int fd;
 } socket;
 
-static void socketClear(socket *self)
+static void socketDealloc(socket* self)
 {
     if (self->fd <= 0)
         return;
 
     socket_close(self->fd);
     self->fd = 0;
-}
 
-static void socketDealloc(socket* self)
-{
-    socketClear(self);
     self->ob_type->tp_free((PyObject*)self);
 }
 
@@ -120,7 +116,7 @@ static PyTypeObject socketType = {
     Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE, /*tp_flags*/
     "Unix socket",             /* tp_doc */
     0,                         /* tp_traverse */
-    (inquiry)socketClear,      /* tp_clear */
+    0,                         /* tp_clear */
     0,                         /* tp_richcompare */
     0,                         /* tp_weaklistoffset */
     0,                         /* tp_iter */
